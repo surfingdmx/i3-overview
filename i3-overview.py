@@ -9,7 +9,9 @@ WIDTH = 1200
 HEIGHT = 700
 BACKGROUND_COLOR = 'white'
 SEPARATOR_COLOR = '#cccccc'
-WINDOW_FILL_COLOR = '#cccccc'
+BORDER_COLOR = '#000000'
+WORKSPACE_COLOR = '#5555aa'
+WINDOW_FILL_COLOR = '#dddddd'
 SPACING = 12
 
 WS_WIDTH = (WIDTH - 6 * SPACING) // 5
@@ -36,24 +38,43 @@ for co in con:
 
 
 ##########  Paint Workspaces on canvas  ################################################################################
-def draw_children(container, x, y, w, h):
-    for sub in container:
-        if sub.window_class is None:
-            continue
+def get_visible_subs(c):
+    if len(c.nodes) == 0:
+        return [c]
+
+    ret = []
+    if c.layout == 'tabbed' or c.layout == 'stacked':
+        ret.extend(get_visible_subs(c.find_by_id(c.focus[0])))
+    else:
+        for sub in c.nodes:
+            ret.extend(get_visible_subs(sub))
+
+    return list(set(ret))
+
+
+def draw_with_children(container, x, y, w, h):
+    for sub in get_visible_subs(container):
         c.create_rectangle(x + int((sub.rect.x / container.rect.width) * w),
                            y + int((sub.rect.y / container.rect.height) * h),
-                           x + int((sub.rect.width / container.rect.width) * w),
-                           y + int((sub.rect.height / container.rect.height) * h))
-        c.create_text(x + 4, y + 4, text=sub.name, anchor='nw', width=w - 8)
+                           x + int((sub.rect.x / container.rect.width) * w) +
+                                    int((sub.rect.width / container.rect.width) * w),
+                           y + int((sub.rect.y / container.rect.height) * h) +
+                                    int((sub.rect.height / container.rect.height) * h),
+                           fill=WINDOW_FILL_COLOR, outline=BORDER_COLOR)
+        c.create_text(x + int((sub.rect.x / container.rect.width) * w) + 4,
+                      y + int((sub.rect.y / container.rect.height) * h) + 4,
+                      text=sub.name, anchor='nw',
+                      width=int((sub.rect.width / container.rect.width) * w)-8)
 
 c.create_rectangle(0, 0, WIDTH, HEIGHT, fill=BACKGROUND_COLOR, outline=BACKGROUND_COLOR)  # background
 
 x = y = SPACING
 for ws in workspaces:
     c.create_rectangle(x, y, x + WS_WIDTH, y + WS_HEIGHT, outline=SEPARATOR_COLOR)
-    draw_children(ws, x, y, WS_WIDTH, 125)
-    c.create_rectangle(x, y, x + WS_WIDTH, y + 125)
-    c.create_text(x + WS_WIDTH // 2, y + 125 + (WS_HEIGHT - 125) // 2, text=ws.name, anchor='center', justify='left', width=WS_WIDTH)
+    c.create_rectangle(x, y, x + WS_WIDTH, y + 125, outline=BORDER_COLOR, fill=WORKSPACE_COLOR)
+    draw_with_children(ws, x, y, WS_WIDTH, 125)
+    c.create_text(x + WS_WIDTH // 2, y + 125 + (WS_HEIGHT - 125) // 2,
+            text=ws.name, anchor='center', justify='left', width=WS_WIDTH)
     x += SPACING + WS_WIDTH
     if x > 5 * SPACING + 5 * WS_WIDTH:
         x = SPACING
